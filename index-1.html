@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Football Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --grass-a: #1d6b41;
+    --grass-b: #227849;
+    --chalk: #f7f8f5;
+    --ink: #10281b;
+    --card-yellow: #ffd200;
+    --right-bg: #d3f3df;
+    --right-line: #1d8a4f;
+    --wrong-bg: #fbd5d2;
+    --wrong-line: #cf3a32;
+    --muted: #4a5f53;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    min-height: 100dvh;
+    font-family: "Archivo", system-ui, sans-serif;
+    color: var(--ink);
+    background: repeating-linear-gradient(90deg, var(--grass-a) 0 64px, var(--grass-b) 64px 128px);
+    display: flex;
+    justify-content: center;
+    padding: 20px 16px 40px;
+  }
+  main { width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 18px; }
+  header { color: var(--chalk); }
+  h1 {
+    font-family: "Archivo Black", system-ui, sans-serif;
+    font-size: clamp(2rem, 9vw, 2.8rem);
+    line-height: 1;
+  }
+  #meta { margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; min-height: 28px; }
+  #meta .tag {
+    background: var(--card-yellow);
+    color: var(--ink);
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+  }
+  #meta .plain { opacity: 0.9; }
+
+  #app { display: flex; flex-direction: column; gap: 14px; }
+  .card {
+    background: var(--chalk);
+    border-radius: 14px;
+    padding: 22px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    box-shadow: 0 0 0 3px rgba(247, 248, 245, 0.5);
+  }
+  button { font: inherit; cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+  .menu-btn {
+    text-align: left;
+    background: var(--chalk);
+    color: var(--ink);
+    border: 0;
+    border-radius: 14px;
+    padding: 18px;
+    box-shadow: 0 0 0 3px rgba(247, 248, 245, 0.5);
+  }
+  .menu-btn strong { display: block; font-family: "Archivo Black", system-ui, sans-serif; font-size: 1.4rem; font-weight: 400; }
+  .menu-btn span { color: var(--muted); }
+
+  .progress { font-size: 0.9rem; color: var(--muted); }
+  .question { font-size: 1.35rem; line-height: 1.25; font-weight: 600; }
+  .label { font-weight: 600; }
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .option {
+    text-align: left;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 2px solid #c7d1ca;
+    background: #fff;
+    color: var(--ink);
+    font-size: 1.05rem;
+  }
+  .option:disabled { cursor: default; }
+  .option.right { background: var(--right-bg); border-color: var(--right-line); font-weight: 600; }
+  .option.wrong { background: var(--wrong-bg); border-color: var(--wrong-line); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    background: #fff;
+    color: var(--ink);
+    border: 2px solid #c7d1ca;
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 0.95rem;
+  }
+  .chip.on { background: var(--ink); color: var(--chalk); border-color: var(--ink); }
+
+  input {
+    font: inherit;
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 2px solid #c7d1ca;
+    background: #fff;
+    color: var(--ink);
+  }
+  .names { display: grid; gap: 10px; }
+
+  .next, .action {
+    background: var(--ink);
+    color: var(--chalk);
+    border: 0;
+    padding: 14px 18px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1.05rem;
+    text-align: center;
+    text-decoration: none;
+    display: block;
+  }
+  .action.alt { background: transparent; color: var(--ink); border: 2px solid var(--ink); }
+  .back { align-self: flex-start; background: transparent; border: 0; color: var(--muted); padding: 0; font-weight: 600; }
+
+  .score { font-family: "Archivo Black", system-ui, sans-serif; font-size: 3.2rem; line-height: 1; }
+  .emoji { font-size: 1.8rem; letter-spacing: 0.1em; }
+  .note { color: var(--muted); font-size: 0.95rem; }
+  .pass-name { font-family: "Archivo Black", system-ui, sans-serif; font-size: 2.2rem; line-height: 1.1; overflow-wrap: anywhere; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .option, .chip { transition: background 0.15s, border-color 0.15s; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Football Quiz</h1>
+    <div id="meta"></div>
+  </header>
+  <div id="app"></div>
+</main>
+
+<script>
+  // ---------- Question bank ----------
+  // [competition, topic, question, options, index of correct option (starting at 0)]
+  // competitions: pl, laliga, bundes, seriea, ucl, wc, copa, nl, euro, africa
+  // topics: club, person, team
+  const RAW = [
+    ["pl", "club", "Which club won the first Premier League season in 1992-93?", ["Blackburn Rovers", "Manchester United", "Arsenal", "Aston Villa"], 1],
+    ["pl", "person", "Who is the Premier League's all-time top scorer?", ["Wayne Rooney", "Alan Shearer", "Harry Kane", "Thierry Henry"], 1],
+    ["pl", "club", "Which team went the whole 2003-04 Premier League season unbeaten?", ["Manchester United", "Chelsea", "Liverpool", "Arsenal"], 3],
+    ["pl", "club", "Which club won the Premier League in 2015-16 at odds of 5000-1?", ["Tottenham", "Leicester City", "Everton", "West Ham"], 1],
+    ["pl", "person", "Who scored a record 36 Premier League goals in the 2022-23 season?", ["Mohamed Salah", "Harry Kane", "Erling Haaland", "Son Heung-min"], 2],
+    ["pl", "club", "Which club plays its home games at Stamford Bridge?", ["Chelsea", "Fulham", "Brentford", "Crystal Palace"], 0],
+    ["pl", "person", "Which manager won 13 Premier League titles with Manchester United?", ["Arsène Wenger", "Alex Ferguson", "José Mourinho", "Pep Guardiola"], 1],
+    ["pl", "club", "Which club won the 2023-24 Premier League, its fourth title in a row?", ["Arsenal", "Liverpool", "Manchester City", "Aston Villa"], 2],
+    ["pl", "club", "Which club won the 2024-25 Premier League?", ["Liverpool", "Arsenal", "Manchester City", "Chelsea"], 0],
+
+    ["laliga", "club", "Which club has won the most La Liga titles?", ["Barcelona", "Atlético Madrid", "Real Madrid", "Valencia"], 2],
+    ["laliga", "club", "Which club plays at the Mestalla stadium?", ["Sevilla", "Valencia", "Villarreal", "Real Betis"], 1],
+    ["laliga", "club", "Which club plays at San Mamés?", ["Athletic Club", "Real Sociedad", "Celta Vigo", "Osasuna"], 0],
+    ["laliga", "person", "Who is Barcelona's all-time top scorer?", ["Luis Suárez", "Samuel Eto'o", "Lionel Messi", "Ronaldinho"], 2],
+    ["laliga", "person", "Who has won the most Pichichi awards as La Liga's top scorer?", ["Cristiano Ronaldo", "Lionel Messi", "Telmo Zarra", "Hugo Sánchez"], 1],
+    ["laliga", "club", "Which club won La Liga in 2020-21?", ["Sevilla", "Atlético Madrid", "Real Sociedad", "Villarreal"], 1],
+    ["laliga", "person", "Which manager led Barcelona to the 2009 treble?", ["Frank Rijkaard", "Pep Guardiola", "Luis Enrique", "Tito Vilanova"], 1],
+    ["laliga", "club", "Which club won La Liga in 2023-24 under Carlo Ancelotti?", ["Barcelona", "Girona", "Atlético Madrid", "Real Madrid"], 3],
+
+    ["bundes", "club", "Which club has won the most Bundesliga titles?", ["Borussia Dortmund", "Bayern Munich", "Borussia Mönchengladbach", "Werder Bremen"], 1],
+    ["bundes", "club", "Which club won the 2023-24 Bundesliga without losing a game?", ["Bayern Munich", "RB Leipzig", "Bayer Leverkusen", "Stuttgart"], 2],
+    ["bundes", "person", "Who is the Bundesliga's all-time top scorer?", ["Robert Lewandowski", "Klaus Fischer", "Jupp Heynckes", "Gerd Müller"], 3],
+    ["bundes", "club", "Which club plays at Signal Iduna Park?", ["Schalke 04", "Borussia Dortmund", "Eintracht Frankfurt", "VfB Stuttgart"], 1],
+    ["bundes", "person", "Who broke Gerd Müller's single-season Bundesliga record with 41 goals in 2020-21?", ["Erling Haaland", "Thomas Müller", "Robert Lewandowski", "Harry Kane"], 2],
+    ["bundes", "person", "Which manager led Bayer Leverkusen to the 2023-24 title?", ["Xabi Alonso", "Julian Nagelsmann", "Thomas Tuchel", "Jürgen Klopp"], 0],
+
+    ["seriea", "club", "Which club has won the most Serie A titles?", ["AC Milan", "Inter Milan", "Juventus", "Napoli"], 2],
+    ["seriea", "club", "Which club shares the San Siro with AC Milan?", ["Inter Milan", "Atalanta", "Lazio", "Torino"], 0],
+    ["seriea", "club", "Which club won the 2022-23 Serie A, its first title since 1990?", ["Napoli", "Lazio", "Roma", "Atalanta"], 0],
+    ["seriea", "person", "Who is Serie A's all-time top scorer?", ["Francesco Totti", "Gunnar Nordahl", "Silvio Piola", "Alessandro Del Piero"], 2],
+    ["seriea", "person", "Which club did Cristiano Ronaldo join in 2018?", ["AC Milan", "Inter Milan", "Roma", "Juventus"], 3],
+    ["seriea", "person", "Which manager led Napoli to the 2024-25 Serie A title?", ["Luciano Spalletti", "Antonio Conte", "Massimiliano Allegri", "Stefano Pioli"], 1],
+    ["seriea", "club", "Which club is nicknamed 'I Giallorossi'?", ["Parma", "Fiorentina", "Roma", "Genoa"], 2],
+
+    ["ucl", "club", "Which club has won the most Champions League titles?", ["AC Milan", "Bayern Munich", "Liverpool", "Real Madrid"], 3],
+    ["ucl", "person", "Who is the Champions League's all-time top scorer?", ["Lionel Messi", "Robert Lewandowski", "Cristiano Ronaldo", "Karim Benzema"], 2],
+    ["ucl", "club", "Which club came back from 3-0 down at half-time to win the 2005 final?", ["AC Milan", "Liverpool", "Chelsea", "Juventus"], 1],
+    ["ucl", "club", "Which club won the 2023 Champions League final in Istanbul?", ["Inter Milan", "Real Madrid", "Manchester City", "Bayern Munich"], 2],
+    ["ucl", "club", "Which club beat Borussia Dortmund in the 2024 final at Wembley?", ["Real Madrid", "Bayern Munich", "PSG", "Barcelona"], 0],
+    ["ucl", "club", "Which club won the 2025 Champions League final?", ["Inter Milan", "Arsenal", "Barcelona", "Paris Saint-Germain"], 3],
+    ["ucl", "club", "Which club won the 1999 final with two late goals against Bayern Munich?", ["Manchester United", "Barcelona", "Real Madrid", "Juventus"], 0],
+    ["ucl", "person", "Which manager has won the most Champions League titles?", ["Pep Guardiola", "Carlo Ancelotti", "Alex Ferguson", "Zinedine Zidane"], 1],
+
+    ["wc", "team", "Which country won the 2022 World Cup?", ["France", "Croatia", "Argentina", "Morocco"], 2],
+    ["wc", "team", "Which country has won the most World Cups?", ["Germany", "Italy", "Argentina", "Brazil"], 3],
+    ["wc", "person", "Who is the World Cup's all-time top scorer?", ["Pelé", "Ronaldo Nazário", "Miroslav Klose", "Just Fontaine"], 2],
+    ["wc", "team", "Which country won the 2018 World Cup?", ["Croatia", "France", "Belgium", "England"], 1],
+    ["wc", "team", "Which country won the 2010 World Cup?", ["Netherlands", "Germany", "Spain", "Uruguay"], 2],
+    ["wc", "team", "Which country hosted the 2022 World Cup?", ["Qatar", "Saudi Arabia", "UAE", "Russia"], 0],
+    ["wc", "team", "Which three countries are hosting the 2026 World Cup?", ["USA, Canada and Mexico", "USA, Brazil and Argentina", "Spain, Portugal and Morocco", "USA, Mexico and Colombia"], 0],
+    ["wc", "person", "Who won the Golden Ball as best player at the 2022 World Cup?", ["Kylian Mbappé", "Lionel Messi", "Luka Modrić", "Antoine Griezmann"], 1],
+    ["wc", "team", "Which country won the 2014 World Cup in Brazil?", ["Argentina", "Netherlands", "Germany", "Brazil"], 2],
+    ["wc", "team", "Which country won the first World Cup in 1930?", ["Uruguay", "Argentina", "Italy", "Brazil"], 0],
+
+    ["copa", "team", "Which country has won the most Copa América titles?", ["Uruguay", "Brazil", "Argentina", "Chile"], 2],
+    ["copa", "team", "Which country won the 2024 Copa América?", ["Colombia", "Argentina", "Brazil", "Uruguay"], 1],
+    ["copa", "team", "Which country won the 2021 Copa América, beating Brazil in the final?", ["Argentina", "Chile", "Colombia", "Peru"], 0],
+    ["copa", "team", "Which country won the 2019 Copa América?", ["Brazil", "Peru", "Chile", "Argentina"], 0],
+    ["copa", "team", "Which country won the 2016 Copa América Centenario?", ["Argentina", "Chile", "Mexico", "Colombia"], 1],
+    ["copa", "person", "Who scored the winning goal in the 2024 Copa América final?", ["Lionel Messi", "Ángel Di María", "Lautaro Martínez", "Julián Álvarez"], 2],
+
+    ["nl", "team", "Which country won the first UEFA Nations League in 2019?", ["Portugal", "England", "Netherlands", "Switzerland"], 0],
+    ["nl", "team", "Which country won the 2021 Nations League, beating Spain in the final?", ["Italy", "Belgium", "France", "Croatia"], 2],
+    ["nl", "team", "Which country won the 2023 Nations League?", ["Croatia", "Spain", "Italy", "Netherlands"], 1],
+    ["nl", "team", "Which country won the 2025 Nations League, beating Spain on penalties?", ["Portugal", "France", "Germany", "Italy"], 0],
+    ["nl", "person", "Who scored a hat-trick against Switzerland in the 2019 Nations League semi-final?", ["Bernardo Silva", "Cristiano Ronaldo", "João Félix", "Bruno Fernandes"], 1],
+    ["nl", "team", "Which country hosted the 2023 Nations League finals?", ["Netherlands", "Italy", "Spain", "Portugal"], 0],
+
+    ["euro", "team", "Which country won Euro 2016?", ["France", "Portugal", "Germany", "Wales"], 1],
+    ["euro", "team", "Which country won the Euros played in 2021?", ["England", "Italy", "Spain", "Denmark"], 1],
+    ["euro", "team", "Which country won Euro 2024 in Germany?", ["England", "France", "Spain", "Netherlands"], 2],
+    ["euro", "team", "Which country has won the most European Championships?", ["Germany", "Spain", "France", "Italy"], 1],
+    ["euro", "person", "Who is the all-time top scorer at the European Championships?", ["Michel Platini", "Cristiano Ronaldo", "Alan Shearer", "Antoine Griezmann"], 1],
+    ["euro", "team", "Which country won Euro 1992 after replacing Yugoslavia?", ["Denmark", "Sweden", "Netherlands", "Germany"], 0],
+    ["euro", "person", "Who scored Spain's winning goal in the Euro 2024 final?", ["Lamine Yamal", "Nico Williams", "Mikel Oyarzabal", "Dani Olmo"], 2],
+
+    ["africa", "team", "What is the nickname of the Nigeria national team?", ["Black Stars", "Super Eagles", "Indomitable Lions", "Elephants"], 1],
+    ["africa", "team", "How many times has Nigeria won the Africa Cup of Nations?", ["1", "2", "3", "5"], 2],
+    ["africa", "team", "Which country won the Africa Cup of Nations in early 2024?", ["Nigeria", "Ivory Coast", "Senegal", "Egypt"], 1],
+    ["africa", "person", "Who is Nigeria's all-time top scorer?", ["Rashidi Yekini", "Jay-Jay Okocha", "Nwankwo Kanu", "Victor Osimhen"], 0],
+    ["africa", "team", "In which year did Nigeria win Olympic football gold?", ["1992", "1996", "2000", "2008"], 1],
+    ["africa", "team", "Which country has won the most Africa Cup of Nations titles?", ["Cameroon", "Ghana", "Nigeria", "Egypt"], 3],
+    ["africa", "team", "Which country won the Africa Cup of Nations played in early 2022?", ["Senegal", "Egypt", "Cameroon", "Algeria"], 0],
+    ["africa", "person", "Who won the 2023 CAF African Player of the Year award?", ["Mohamed Salah", "Victor Osimhen", "Achraf Hakimi", "Sadio Mané"], 1],
+    ["africa", "person", "Who won the 2024 CAF African Player of the Year award?", ["Ademola Lookman", "Achraf Hakimi", "Serhou Guirassy", "Mohamed Salah"], 0]
+  ];
+  const BANK = RAW.map(([c, t, q, o, a]) => ({ c, t, q, o, a }));
+
+  const CATS = [
+    { k: "all", n: "Mixed (all)" }, { k: "pl", n: "Premier League" }, { k: "laliga", n: "La Liga" },
+    { k: "bundes", n: "Bundesliga" }, { k: "seriea", n: "Serie A" }, { k: "ucl", n: "Champions League" },
+    { k: "wc", n: "World Cup" }, { k: "copa", n: "Copa América" }, { k: "nl", n: "Nations League" },
+    { k: "euro", n: "Euros" }, { k: "africa", n: "Africa & Nigeria" }
+  ];
+  const TOPICS = [
+    { k: "all", n: "Everything" }, { k: "club", n: "Clubs" },
+    { k: "person", n: "Players & managers" }, { k: "team", n: "National teams" }
+  ];
+
+  // ---------- Helpers ----------
+  const app = document.getElementById("app");
+  const meta = document.getElementById("meta");
+  const DAILY_COUNT = 5;
+  const ROUNDS = 10;
+
+  const now = new Date();
+  const dayNum = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
+  const dayKey = new Date(dayNum * 86400000).toISOString().slice(0, 10);
+  const yesterdayKey = new Date((dayNum - 1) * 86400000).toISOString().slice(0, 10);
+
+  const store = {
+    get() { try { return JSON.parse(localStorage.getItem("dailyFootballQuiz")) || {}; } catch (e) { return {}; } },
+    set(v) { try { localStorage.setItem("dailyFootballQuiz", JSON.stringify(v)); } catch (e) {} }
+  };
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  const sum = (arr) => arr.reduce((a, b) => a + b, 0);
+  const nameOf = (list, k) => (list.find((x) => x.k === k) || {}).n;
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  function shuffleOptions(item) {
+    const order = shuffle(item.o.map((_, i) => i));
+    return { c: item.c, t: item.t, q: item.q, o: order.map((i) => item.o[i]), a: order.indexOf(item.a) };
+  }
+  function poolFor(cat, topic) {
+    const byCat = BANK.filter((x) => cat === "all" || x.c === cat);
+    const byTopic = byCat.filter((x) => topic === "all" || x.t === topic);
+    return byTopic.length >= 4 ? byTopic : byCat;
+  }
+
+  let saved = store.get();
+  let setup = { cat: "all", topic: "all", p1: "", p2: "" };
+  let game = null;
+
+  function renderMeta() {
+    meta.innerHTML = "";
+    meta.appendChild(el("span", "plain", new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" })));
+    if (saved.streak) meta.appendChild(el("span", "tag", "Streak: " + saved.streak + (saved.streak === 1 ? " day" : " days")));
+  }
+
+  function backButton() {
+    const b = el("button", "back", "Back to menu");
+    b.addEventListener("click", showHome);
+    return b;
+  }
+
+  // ---------- Home ----------
+  function menuButton(title, desc, fn) {
+    const b = el("button", "menu-btn");
+    b.append(el("strong", "", title), el("span", "", desc));
+    b.addEventListener("click", fn);
+    return b;
+  }
+
+  function showHome() {
+    app.innerHTML = "";
+    renderMeta();
+    const doneToday = saved.done === dayKey && Array.isArray(saved.marks) && saved.marks.length === DAILY_COUNT;
+    app.append(
+      menuButton("Daily quiz", doneToday ? "Done today: " + sum(saved.marks) + "/" + DAILY_COUNT + ". Tap to see your result." : DAILY_COUNT + " new questions every day. Keep your streak.", startDaily),
+      menuButton("Practice", "Pick a league or tournament and test yourself.", () => showSetup("practice")),
+      menuButton("Friend duel", "Two players, one phone. See who knows more football.", () => showSetup("duel"))
+    );
+  }
+
+  // ---------- Setup ----------
+  function chips(list, current, onPick) {
+    const wrap = el("div", "chips");
+    list.forEach((item) => {
+      const b = el("button", "chip" + (item.k === current ? " on" : ""), item.n);
+      b.addEventListener("click", () => onPick(item.k));
+      wrap.appendChild(b);
+    });
+    return wrap;
+  }
+
+  function showSetup(mode) {
+    app.innerHTML = "";
+    const card = el("section", "card");
+    card.appendChild(el("h2", "question", mode === "duel" ? "Friend duel" : "Practice"));
+
+    if (mode === "duel") {
+      const names = el("div", "names");
+      const a = document.createElement("input");
+      a.placeholder = "Player 1 name";
+      a.maxLength = 16;
+      a.value = setup.p1;
+      a.addEventListener("input", () => { setup.p1 = a.value; });
+      const b = document.createElement("input");
+      b.placeholder = "Player 2 name";
+      b.maxLength = 16;
+      b.value = setup.p2;
+      b.addEventListener("input", () => { setup.p2 = b.value; });
+      names.append(a, b);
+      card.append(el("p", "label", "Who is playing?"), names);
+    }
+
+    card.append(
+      el("p", "label", "Competition"),
+      chips(CATS, setup.cat, (k) => { setup.cat = k; showSetup(mode); }),
+      el("p", "label", "Questions about"),
+      chips(TOPICS, setup.topic, (k) => { setup.topic = k; showSetup(mode); })
+    );
+
+    const start = el("button", "next", mode === "duel" ? "Start duel" : "Start quiz");
+    start.addEventListener("click", () => startGame(mode));
+    card.appendChild(start);
+    app.append(backButton(), card);
+  }
+
+  // ---------- Game engine ----------
+  function startDaily() {
+    const doneToday = saved.done === dayKey && Array.isArray(saved.marks) && saved.marks.length === DAILY_COUNT;
+    if (doneToday) {
+      game = { mode: "daily", marks: saved.marks.slice(), qs: [] };
+      return finishGame(true);
+    }
+    const qs = Array.from({ length: DAILY_COUNT }, (_, i) => BANK[(dayNum * DAILY_COUNT + i) % BANK.length]);
+    game = { mode: "daily", qs: qs, idx: 0, marks: [] };
+    nextStep();
+  }
+
+  function startGame(mode) {
+    const pool = shuffle(poolFor(setup.cat, setup.topic));
+    let n = Math.min(ROUNDS, pool.length);
+    if (mode === "duel" && n % 2) n--;
+    game = {
+      mode: mode,
+      qs: pool.slice(0, n).map(shuffleOptions),
+      idx: 0,
+      marks: [],
+      names: [setup.p1.trim() || "Player 1", setup.p2.trim() || "Player 2"],
+      scores: [0, 0]
+    };
+    nextStep();
+  }
+
+  function nextStep() {
+    if (game.idx >= game.qs.length) return finishGame(false);
+    if (game.mode === "duel") showPass(); else showQuestion();
+  }
+
+  function showPass() {
+    app.innerHTML = "";
+    const turn = game.idx % 2;
+    const card = el("section", "card");
+    const ready = el("button", "next", "I'm ready");
+    ready.addEventListener("click", showQuestion);
+    card.append(
+      el("p", "progress", "Question " + (game.idx + 1) + " of " + game.qs.length),
+      el("p", "label", "Pass the phone to"),
+      el("div", "pass-name", game.names[turn]),
+      ready
+    );
+    app.appendChild(card);
+    ready.focus();
+  }
+
+  function showQuestion() {
+    app.innerHTML = "";
+    const item = game.qs[game.idx];
+    const card = el("section", "card");
+    const list = el("div", "options");
+    item.o.forEach((text, i) => {
+      const b = el("button", "option", text);
+      b.addEventListener("click", () => answer(i, list, item, card));
+      list.appendChild(b);
+    });
+    let top;
+    if (game.mode === "duel") {
+      top = game.names[game.idx % 2] + " · " + game.names[0] + " " + game.scores[0] + " - " + game.scores[1] + " " + game.names[1];
+    } else {
+      top = "Question " + (game.idx + 1) + " of " + game.qs.length;
+    }
+    card.append(el("p", "progress", top), el("h2", "question", item.q), list);
+    app.appendChild(card);
+  }
+
+  function answer(i, list, item, card) {
+    const right = i === item.a;
+    game.marks.push(right ? 1 : 0);
+    if (game.mode === "duel" && right) game.scores[game.idx % 2]++;
+    Array.from(list.children).forEach((b, j) => {
+      b.disabled = true;
+      if (j === item.a) b.classList.add("right");
+      else if (j === i) b.classList.add("wrong");
+    });
+    const last = game.idx === game.qs.length - 1;
+    const next = el("button", "next", last ? "See result" : "Next question");
+    next.addEventListener("click", () => { game.idx++; nextStep(); });
+    card.appendChild(next);
+    next.focus();
+  }
+
+  // ---------- Results ----------
+  function finishGame(alreadySaved) {
+    if (game.mode === "daily" && !alreadySaved) {
+      const streak = saved.last === yesterdayKey ? (saved.streak || 0) + 1 : 1;
+      saved = { last: dayKey, streak: streak, done: dayKey, marks: game.marks };
+      store.set(saved);
+    }
+    renderMeta();
+    const total = game.marks.length;
+    const score = sum(game.marks);
+    const emoji = game.marks.map((m) => (m ? "🟩" : "🟥")).join("");
+    const url = location.href;
+
+    if (game.mode === "daily") {
+      showResult({
+        label: "Today's score", big: score + "/" + total, emoji: emoji,
+        note: "New questions tomorrow. Come back to keep your streak.",
+        shareText: "Daily Football Quiz ⚽ " + score + "/" + total + "\n" + emoji + "\nCan you beat me? " + url,
+        actions: []
+      });
+    } else if (game.mode === "practice") {
+      showResult({
+        label: nameOf(CATS, setup.cat), big: score + "/" + total, emoji: emoji,
+        note: score === total ? "Perfect score." : "Try again to beat your score.",
+        shareText: "Football Quiz ⚽ " + nameOf(CATS, setup.cat) + ": " + score + "/" + total + "\n" + emoji + "\nCan you beat me? " + url,
+        actions: [{ text: "Play again", fn: () => startGame("practice") }]
+      });
+    } else {
+      const [a, b] = game.scores;
+      const [n1, n2] = game.names;
+      const headline = a === b ? "It's a draw" : (a > b ? n1 : n2) + " wins";
+      showResult({
+        label: headline, big: a + " - " + b, emoji: "",
+        note: n1 + " " + a + ", " + n2 + " " + b + ". " + (a === b ? "Time for a rematch." : "Rematch?"),
+        shareText: "Football Quiz duel ⚽ " + n1 + " " + a + " - " + b + " " + n2 + "\nThink you know more football? " + url,
+        actions: [{ text: "Rematch", fn: () => startGame("duel") }]
+      });
+    }
+  }
+
+  function showResult(r) {
+    app.innerHTML = "";
+    const card = el("section", "card");
+    card.append(el("p", "progress", r.label), el("div", "score", r.big));
+    if (r.emoji) card.appendChild(el("div", "emoji", r.emoji));
+    card.appendChild(el("p", "note", r.note));
+
+    r.actions.forEach((act) => {
+      const b = el("button", "action", act.text);
+      b.addEventListener("click", act.fn);
+      card.appendChild(b);
+    });
+
+    const wa = el("a", "action", "Share on WhatsApp");
+    wa.href = "https://wa.me/?text=" + encodeURIComponent(r.shareText);
+    wa.target = "_blank";
+    wa.rel = "noopener";
+
+    const copy = el("button", "action alt", "Copy result");
+    copy.addEventListener("click", () => {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(r.shareText).then(
+          () => { copy.textContent = "Copied"; },
+          () => { copy.textContent = "Copy failed"; }
+        );
+      } else {
+        copy.textContent = "Copy not supported";
+      }
+    });
+
+    card.append(wa, copy);
+    app.append(backButton(), card);
+  }
+
+  showHome();
+</script>
+</body>
+</html>
