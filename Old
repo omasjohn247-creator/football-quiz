@@ -1,32 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Football Quiz</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --grass-a: #1d6b41;
-    --grass-b: #227849;
-    --chalk: #f7f8f5;
-    --ink: #10281b;
-    --card-yellow: #ffd200;
-    --right-bg: #d3f3df;
-    --right-line: #1d8a4f;
-    --wrong-bg: #fbd5d2;
-    --wrong-line: #cf3a32;
-    --muted: #4a5f53;
-  }
-  * { box-sizing: border-box; margin: 0; }
-  body {
-    min-height: 100dvh;
-    font-family: "Archivo", system-ui, sans-serif;
-    color: var(--ink);
-    background: repeating-linear-gradient(90deg, var(--grass-a) 0 64px, var(--grass-b) 64px 128px);
-    display: flex;
+
+    
     justify-content: center;
     padding: 20px 16px 40px;
   }
@@ -350,6 +323,4 @@
       const a = document.createElement("input");
       a.placeholder = "Player 1 name";
       a.maxLength = 16;
-      a.value = setup.p1;
-      a.addEventListener("input", () => { setup.p1 = a.value; });
-      const b = docum
+      a.value = se
